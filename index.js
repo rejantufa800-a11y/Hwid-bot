@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionFlagsBits, AttachmentBuilder, REST, Routes, SlashCommandBuilder } = require('discord.js');
 const express = require('express');
 const fs = require('fs');
 
@@ -62,8 +62,35 @@ const client = new Client({
     ]
 });
 
-client.once('ready', () => {
+// Define Slash Commands for registration
+const commands = [
+    new SlashCommandBuilder().setName('panel').setDescription('Opens the Egirl Hub key verification panel'),
+    new SlashCommandBuilder().setName('resethwid').setDescription('Resets your HWID lock (Once every 24 hours)'),
+    new SlashCommandBuilder()
+        .setName('setpremium')
+        .setDescription('Grants premium status to a user (Admin only)')
+        .addUserOption(option => option.setName('user').setDescription('The user to set as premium').setRequired(true)),
+    new SlashCommandBuilder()
+        .setName('bulkgen')
+        .setDescription('Generates permanent keys in a file (Admin only)')
+        .addIntegerOption(option => option.setName('amount').setDescription('Number of keys to generate').setRequired(true))
+].map(command => command.toJSON());
+
+client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
+
+    // Register commands globally (or you can scope them to a specific guild ID if you prefer instant loading)
+    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+    try {
+        console.log('Started refreshing application (/) commands.');
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: commands },
+        );
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error(error);
+    }
 });
 
 // Helper to check admin/higher role permissions
@@ -78,9 +105,9 @@ client.on('interactionCreate', async interaction => {
         // 1. /panel command
         if (commandName === 'panel') {
             const embed = new EmbedBuilder()
-                .setTitle('🛡️ Tufa Group Verification Panel')
+                .setTitle('🛡️ Egirl Hub Verification Panel')
                 .setDescription('Click the button below to generate or check your HWID-locked key!')
-                .setColor(0x00AAFF);
+                .setColor(0xFF69B4);
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -142,7 +169,7 @@ client.on('interactionCreate', async interaction => {
             let generatedKeys = [];
 
             for (let i = 0; i < amount; i++) {
-                const randomKey = 'TUFA-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                const randomKey = 'EGIRL-' + Math.random().toString(36).substring(2, 10).toUpperCase() + '-' + Math.random().toString(36).substring(2, 10).toUpperCase();
                 keysDb[randomKey] = { hwid: null, permanent: true, usedBy: null };
                 generatedKeys.push(randomKey);
             }
@@ -220,4 +247,3 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-                    
